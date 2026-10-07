@@ -220,7 +220,7 @@
     if(!state.user||!isAdmin()) return;
     const body=$('#adminItemsBody'); if(!body) return;
     const itens=state.itens.filter(itemReal).sort((a,b)=>String(a.Nome||'').localeCompare(String(b.Nome||''),'pt-BR'));
-    body.innerHTML=itens.length?itens.map(i=>`<tr><td><div class="item-cell"><div class="item-icon">${esc(i.Icone||'📦')}</div><div><strong>${esc(i.Nome)}</strong><div class="meta">${esc(i.Codigo||'')}</div></div></div></td><td>${typeBadge(i.TipoItem)}</td><td>${esc(i.Categoria||'—')}</td><td class="number">${fmtNum(i.QuantidadeAtual)}</td><td class="number">${fmtNum(i.QuantidadeBaixada)}</td><td>${esc(i.Localizacao||'—')}</td><td>${badgeItem(i)}</td><td><button class="mini-btn" onclick="almox.editItem('${i.ID}')">Editar</button></td></tr>`).join(''):`<tr><td colspan="8" class="empty">Nenhum item cadastrado.</td></tr>`;
+    body.innerHTML=itens.length?itens.map(i=>`<tr><td><div class="item-cell"><div class="item-icon">${esc(i.Icone||'📦')}</div><div><strong>${esc(i.Nome)}</strong><div class="meta">${esc(i.Codigo||'')}</div></div></div></td><td>${typeBadge(i.TipoItem)}</td><td>${esc(i.Categoria||'—')}</td><td class="number">${fmtNum(i.QuantidadeAtual)}</td><td class="number">${fmtNum(i.QuantidadeBaixada)}</td><td>${esc(i.Localizacao||'—')}</td><td>${badgeItem(i)}</td><td><div class="row-actions"><button class="mini-btn" onclick="almox.editItem('${i.ID}')">Editar</button><button class="mini-btn danger" onclick="almox.deleteItem('${i.ID}')">Excluir</button></div></td></tr>`).join(''):`<tr><td colspan="8" class="empty">Nenhum item cadastrado.</td></tr>`;
   }
 
   function requestStatusBadge(r){
@@ -424,6 +424,21 @@
     form.addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const a=num(f.quantidadeAtiva),b=num(f.quantidadeBaixada);if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<0){toast('Informe quantidades inteiras iguais ou maiores que zero.',true);return}if(a+b<=0){toast('Informe ao menos uma unidade devolvida.',true);return}if(a+b>p){toast('A soma de Ativas e Baixadas não pode ultrapassar a quantidade pendente.',true);return}await mutate('registerReturn',{retiradaId:id,quantidadeAtiva:a,quantidadeBaixada:b,observacoes:f.observacoes});});
   }
 
+  function modalDeleteItem(id){
+    if(!isAdmin()){toast('Somente o ADMIN pode excluir itens.',true);return}
+    const i=(state.itens||[]).find(x=>String(x.ID)===String(id));
+    if(!i){toast('Item não encontrado.',true);return}
+    const abertas=(state.retiradas||[]).filter(r=>String(r.ItemID)===String(id)&&['ABERTA','PARCIAL'].includes(String(r.Status||'').toUpperCase())&&Math.max(0,num(r.Quantidade)-num(r.QuantidadeDevolvida))>0);
+    if(abertas.length){
+      const pend=abertas.reduce((t,r)=>t+Math.max(0,num(r.Quantidade)-num(r.QuantidadeDevolvida)),0);
+      openModal('Excluir item',`<div class="form-grid"><div class="section-note full error-note"><strong>Este item não pode ser excluído agora.</strong><br>Existem ${abertas.length} cautela(s) em aberto/parcial, com ${fmtNum(pend)} unidade(s) ainda pendente(s) de devolução. Finalize essas cautelas antes de excluir o item.</div><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button></div></div>`);
+      return;
+    }
+    const ativa=num(i.QuantidadeAtual),baixada=num(i.QuantidadeBaixada);
+    openModal('Excluir item',`<form id="deleteItemForm" class="form-grid"><div class="section-note full"><strong>${esc(i.Nome)}</strong>${i.Codigo?` • ${esc(i.Codigo)}`:''}<br>Quantidade ativa: <strong>${fmtNum(ativa)}</strong> • quantidade baixada: <strong>${fmtNum(baixada)}</strong>.</div><div class="section-note full error-note"><strong>Atenção:</strong> o item será removido do controle atual do almoxarifado. As movimentações já registradas continuarão preservadas no Histórico.</div><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button><button class="btn danger">Excluir item</button></div></form>`);
+    $('#deleteItemForm').addEventListener('submit',async e=>{e.preventDefault();await mutate('deleteItem',{itemId:id});});
+  }
+
   function modalUser(id){
     if(!isAdmin()){toast('Somente o administrador pode gerenciar usuários.',true);return}
     const u=id?state.usuarios.find(x=>x.ID===id):null;
@@ -451,8 +466,8 @@
   function badgeItem(i){const s=statusItem(i);return s==='BAIXADO'?'<span class="badge off">Baixado</span>':s==='ZERADO'?'<span class="badge zero">Zerado</span>':s==='BAIXO'?'<span class="badge low">Baixo</span>':'<span class="badge">Normal</span>'}
   function isOverdue(r){return ['ABERTA','PARCIAL'].includes(r.Status)&&r.PrevistaDevolucao&&dateMs(r.PrevistaDevolucao)<Date.now()}
   function badgeLoan(r){if(r.Status==='CONSUMIDO')return'<span class="badge">Consumo</span>';if(r.Status==='DEVOLVIDA')return'<span class="badge">Devolvida</span>';if(isOverdue(r))return'<span class="badge overdue">Atrasada</span>';if(r.Status==='PARCIAL')return'<span class="badge partial">Parcial</span>';return'<span class="badge open">Cautela aberta</span>'}
-  function labelMove(t){return({RETIRADA:'Cautela',CONSUMO:'Consumo',DEVOLUCAO:'Devolução',ENTRADA:'Entrada',AJUSTE:'Ajuste',CADASTRO_ITEM:'Cadastro de item',EDICAO_ITEM:'Edição de item',REGISTRO_LEGADO:'Registro migrado',ENTRADA_INICIAL:'Entrada inicial'})[t]||t}
-  function moveIcon(t){return({RETIRADA:'↗',CONSUMO:'↗',DEVOLUCAO:'↙',ENTRADA:'＋',AJUSTE:'⚙',CADASTRO_ITEM:'📦',EDICAO_ITEM:'✎',REGISTRO_LEGADO:'☷',ENTRADA_INICIAL:'📦'})[t]||'•'}
+  function labelMove(t){return({RETIRADA:'Cautela',CONSUMO:'Consumo',DEVOLUCAO:'Devolução',ENTRADA:'Entrada',AJUSTE:'Ajuste',CADASTRO_ITEM:'Cadastro de item',EDICAO_ITEM:'Edição de item',EXCLUSAO_ITEM:'Exclusão de item',REGISTRO_LEGADO:'Registro migrado',ENTRADA_INICIAL:'Entrada inicial'})[t]||t}
+  function moveIcon(t){return({RETIRADA:'↗',CONSUMO:'↗',DEVOLUCAO:'↙',ENTRADA:'＋',AJUSTE:'⚙',CADASTRO_ITEM:'📦',EDICAO_ITEM:'✎',EXCLUSAO_ITEM:'🗑',REGISTRO_LEGADO:'☷',ENTRADA_INICIAL:'📦'})[t]||'•'}
 
   function exportItems(){const rows=filteredItems().map(i=>{const ativa=num(i.QuantidadeAtual),baixada=num(i.QuantidadeBaixada);return {Codigo:i.Codigo,Nome:i.Nome,Tipo:itemTypeLabel(i.TipoItem),Categoria:i.Categoria,QuantidadeAtiva:ativa,QuantidadeBaixada:baixada,QuantidadeTotal:ativa+baixada,AlertaEstoqueBaixoEmOuMenos:i.EstoqueMinimo,Localizacao:i.Localizacao,Status:statusItem(i),Descricao:i.Descricao}});downloadCSV('itens_almox.csv',rows)}
   function exportLoans(){const rows=filteredLoans().map(r=>({Item:r.ItemNome,Codigo:r.CodigoItem,Tipo:itemTypeLabel(r.TipoItem),Quantidade:r.Quantidade,Devolvida:r.QuantidadeDevolvida,DevolvidaAtiva:r.QuantidadeDevolvidaAtiva,DevolvidaBaixada:r.QuantidadeDevolvidaBaixada,MilitarERG:r.RetiradoPor,ProcessoSEI:r.ProcessoSEI,AdjuntoRetirada:r.AdjuntoRetirada,AdjuntoDevolucao:r.AdjuntoDevolucao,DataRetirada:fmtDate(r.DataRetirada),Prevista:fmtDate(r.PrevistaDevolucao),DataDevolucao:fmtDate(r.DataDevolucao),Status:isOverdue(r)?'ATRASADA':r.Status,FinalidadeObservacoes:[r.Finalidade,r.Observacoes].filter(Boolean).join(' | ')}));downloadCSV('cautelas_almox.csv',rows)}
@@ -467,5 +482,5 @@
   function attr(v){return esc(v)}
   function toLocalInput(d){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
 
-  window.almox={ editItem:modalItem, editRequest:modalRequest, registerRequest, adjust:modalAdjust, loanItem:modalLoan, returnLoan:modalReturn, editUser:modalUser, close:closeModal };
+  window.almox={ editItem:modalItem, deleteItem:modalDeleteItem, editRequest:modalRequest, registerRequest, adjust:modalAdjust, loanItem:modalLoan, returnLoan:modalReturn, editUser:modalUser, close:closeModal };
 })();
