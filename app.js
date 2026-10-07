@@ -22,7 +22,6 @@
     $('#logoutBtn').addEventListener('click', logout);
     $('#changePinBtn').addEventListener('click', modalChangePin);
     $('#modalClose').addEventListener('click', closeModal);
-    $('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
     $('#menuBtn').addEventListener('click', () => $('#sidebar').classList.toggle('open'));
     $$('#nav [data-view]').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
     $$('[data-goto]').forEach(b => b.addEventListener('click', () => switchView(b.dataset.goto)));
@@ -158,7 +157,7 @@
 
   function filteredLoans(){
     const q=norm($('#loanSearch').value), st=$('#loanStatus').value, f=$('#loanFrom').value?new Date($('#loanFrom').value+'T00:00:00').getTime():0, t=$('#loanTo').value?new Date($('#loanTo').value+'T23:59:59').getTime():Infinity;
-    return state.retiradas.filter(r=>{const overdue=isOverdue(r);const matchSt=!st||(st==='ATRASADA'?overdue:r.Status===st);const ms=dateMs(r.DataRetirada);return (!q||norm([r.ItemNome,r.CodigoItem,r.RetiradoPor,r.Matricula,r.Setor,r.ProcessoSEI,r.AdjuntoRetirada,r.AdjuntoDevolucao,r.Finalidade].join(' ')).includes(q))&&matchSt&&ms>=f&&ms<=t;});
+    return state.retiradas.filter(r=>{const overdue=isOverdue(r);const matchSt=!st||(st==='ATRASADA'?overdue:r.Status===st);const ms=dateMs(r.DataRetirada);return (!q||norm([r.ItemNome,r.CodigoItem,r.RetiradoPor,r.ProcessoSEI,r.AdjuntoRetirada,r.AdjuntoDevolucao,r.Finalidade,r.Observacoes].join(' ')).includes(q))&&matchSt&&ms>=f&&ms<=t;});
   }
 
   function renderLoans(){
@@ -168,8 +167,8 @@
       const pend=consumo?0:Math.max(0,num(r.Quantidade)-num(r.QuantidadeDevolvida));
       const operators=`<strong>Ret.: ${esc(r.AdjuntoRetirada||r.RegistradoPor||'—')}</strong>${r.AdjuntoDevolucao?`<div class="meta">Dev.: ${esc(r.AdjuntoDevolucao)}</div>`:''}`;
       const qty=consumo?`${fmtNum(r.Quantidade)} saída`:`${fmtNum(pend)} pend.`;
-      return `<tr class="${isOverdue(r)?'overdue-row':''}"><td><strong>${esc(r.ItemNome)}</strong><div class="meta">${esc(r.CodigoItem)}</div></td><td>${typeBadge(r.TipoItem)}</td><td><strong>${esc(r.RetiradoPor||'—')}</strong><div class="meta">${esc([r.Matricula,r.Setor].filter(Boolean).join(' • '))}</div></td><td>${esc(r.ProcessoSEI||'—')}</td><td>${operators}</td><td>${fmtDate(r.DataRetirada)}</td><td>${consumo?'—':(r.PrevistaDevolucao?fmtDate(r.PrevistaDevolucao):'—')}</td><td class="number">${qty}</td><td>${badgeLoan(r)}</td><td>${!consumo&&r.Status!=='DEVOLVIDA'?`<button class="mini-btn primary" onclick="almox.returnLoan('${r.ID}')">Devolver</button>`:'—'}</td></tr>`;
-    }).join(''):`<tr><td colspan="10" class="empty">Nenhuma retirada encontrada.</td></tr>`;
+      return `<tr class="${isOverdue(r)?'overdue-row':''}"><td><strong>${esc(r.ItemNome)}</strong><div class="meta">${esc(r.CodigoItem)}</div></td><td>${typeBadge(r.TipoItem)}</td><td><strong>${esc(r.RetiradoPor||'—')}</strong></td><td>${esc(r.ProcessoSEI||'—')}</td><td>${operators}</td><td>${fmtDate(r.DataRetirada)}</td><td>${consumo?'—':(r.PrevistaDevolucao?fmtDate(r.PrevistaDevolucao):'—')}</td><td class="number">${qty}</td><td>${badgeLoan(r)}</td><td>${!consumo&&r.Status!=='DEVOLVIDA'?`<button class="mini-btn primary" onclick="almox.returnLoan('${r.ID}')">Devolver</button>`:'—'}</td></tr>`;
+    }).join(''):`<tr><td colspan="10" class="empty">Nenhuma cautela encontrada.</td></tr>`;
   }
 
   function historyFilters(){
@@ -195,7 +194,7 @@
 
   function renderMoves(){
     const rows=state.history.rows||[];
-    $('#movesBody').innerHTML=rows.length?rows.map(m=>`<tr><td>${fmtDate(m.DataHora)}</td><td><span class="badge ${m.Tipo==='RETIRADA'?'open':m.Tipo==='DEVOLUCAO'||m.Tipo==='CONSUMO'?'':'off'}">${esc(labelMove(m.Tipo))}</span></td><td><strong>${esc(m.ItemNome||'—')}</strong><div class="meta">${esc(m.CodigoItem||'')}</div></td><td class="number">${fmtNum(m.Quantidade)}</td><td class="number">${fmtNum(m.SaldoAntes)} → ${fmtNum(m.SaldoDepois)}</td><td>${esc(m.Militar||'—')}<div class="meta">${esc([m.Matricula,m.Setor].filter(Boolean).join(' • '))}</div></td><td>${esc(m.ProcessoSEI||'—')}</td><td>${esc(m.AdjuntoRetirada||'—')}</td><td>${esc(m.AdjuntoDevolucao||'—')}</td><td>${esc(m.UsuarioSistema||'—')}</td><td>${esc(m.Observacao||'—')}</td></tr>`).join(''):`<tr><td colspan="11" class="empty">${state.history.loaded?'Nenhuma movimentação encontrada.':'Abra o Histórico para carregar os registros.'}</td></tr>`;
+    $('#movesBody').innerHTML=rows.length?rows.map(m=>`<tr><td>${fmtDate(m.DataHora)}</td><td><span class="badge ${m.Tipo==='RETIRADA'?'open':m.Tipo==='DEVOLUCAO'||m.Tipo==='CONSUMO'?'':'off'}">${esc(labelMove(m.Tipo))}</span></td><td><strong>${esc(m.ItemNome||'—')}</strong><div class="meta">${esc(m.CodigoItem||'')}</div></td><td class="number">${fmtNum(m.Quantidade)}</td><td class="number">${fmtNum(m.SaldoAntes)} → ${fmtNum(m.SaldoDepois)}</td><td>${esc(m.Militar||'—')}</td><td>${esc(m.ProcessoSEI||'—')}</td><td>${esc(m.AdjuntoRetirada||'—')}</td><td>${esc(m.AdjuntoDevolucao||'—')}</td><td>${esc(m.UsuarioSistema||'—')}</td><td>${esc(m.Observacao||'—')}</td></tr>`).join(''):`<tr><td colspan="11" class="empty">${state.history.loaded?'Nenhuma movimentação encontrada.':'Abra o Histórico para carregar os registros.'}</td></tr>`;
     $('#historyPageInfo').textContent=`Página ${state.history.page||1} · até 50 registros`;
     $('#historyPrevBtn').disabled=!state.history.hasPrevious;
     $('#historyNextBtn').disabled=!state.history.hasMore;
@@ -247,13 +246,13 @@
       ${i?'':`<label>Quantidade em estoque*<input name="quantidadeAtual" type="number" min="0" step="1" required placeholder="Ex.: 25"><span class="hint">Informe quantos itens existem no estoque no momento do cadastro.</span></label>`}<label>Alerta de estoque baixo<input name="estoqueMinimo" type="number" min="0" step="1" value="${attr(i?.EstoqueMinimo??0)}"><span class="hint">O sistema alerta quando a quantidade chegar a este valor ou menos.</span></label>
       <label class="full">Localização no almoxarifado*<input name="localizacao" required value="${attr(i?.Localizacao||'')}" placeholder="Ex.: Corredor A > Prateleira 2 > Caixa 3"></label>
       <label>Ícone<input name="icone" value="${attr(i?.Icone||'📦')}" maxlength="12" placeholder="📦"></label><label>Status<select name="ativo"><option value="true" ${i?.Ativo!==false?'selected':''}>Ativo</option><option value="false" ${i?.Ativo===false?'selected':''}>Baixado</option></select></label>
-      <label class="full">Descrição<textarea name="descricao">${esc(i?.Descricao||'')}</textarea></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Salvar</button></div></form>`);
+      <label class="full">Descrição<textarea name="descricao">${esc(i?.Descricao||'')}</textarea></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button><button class="btn primary">Salvar</button></div></form>`);
     $('#itemForm').addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));f.ID=id||'';f.ativo=f.ativo==='true';f.quantidadeAtual=num(f.quantidadeAtual);f.estoqueMinimo=num(f.estoqueMinimo);await mutate('saveItem',{item:f});});
   }
 
   function modalAdjust(id){
     const i=state.itens.find(x=>x.ID===id); if(!i)return;
-    openModal('Ajustar estoque',`<div class="section-note">${esc(i.Nome)} • ${esc(itemTypeLabel(i.TipoItem))} • quantidade atual: <strong>${fmtNum(i.QuantidadeAtual)}</strong></div><form id="adjustForm" class="form-grid"><label>Tipo<select name="tipo"><option value="ENTRADA">Entrada / reposição</option><option value="SAIDA_AJUSTE">Saída por ajuste</option><option value="DEFINIR_SALDO">Definir quantidade exata</option></select></label><label>Quantidade / nova quantidade<input name="valor" type="number" min="0" step="0.01" required></label><label class="full">Motivo*<textarea name="motivo" required placeholder="Ex.: conferência física, recebimento, perda, correção..."></textarea></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Confirmar</button></div></form>`);
+    openModal('Ajustar estoque',`<div class="section-note">${esc(i.Nome)} • ${esc(itemTypeLabel(i.TipoItem))} • quantidade atual: <strong>${fmtNum(i.QuantidadeAtual)}</strong></div><form id="adjustForm" class="form-grid"><label>Tipo<select name="tipo"><option value="ENTRADA">Entrada / reposição</option><option value="SAIDA_AJUSTE">Saída por ajuste</option><option value="DEFINIR_SALDO">Definir quantidade exata</option></select></label><label>Quantidade / nova quantidade<input name="valor" type="number" min="0" step="0.01" required></label><label class="full">Motivo*<textarea name="motivo" required placeholder="Ex.: conferência física, recebimento, perda, correção..."></textarea></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button><button class="btn primary">Confirmar</button></div></form>`);
     $('#adjustForm').addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));await mutate('adjustStock',{itemId:id,tipo:f.tipo,valor:num(f.valor),motivo:f.motivo});});
   }
 
@@ -261,14 +260,14 @@
     const available=state.itens.filter(i=>i.Ativo!==false&&String(i.Ativo).toLowerCase()!=='false'&&num(i.QuantidadeAtual)>0);
     if(!available.length){toast('Não há item ativo com quantidade disponível.',true);return}
     const now=toLocalInput(new Date());
-    openModal('Registrar retirada',`<div class="section-note">Esta operação será registrada automaticamente como feita por <strong>${esc(state.user.Nome)}</strong> (${esc(state.user.Perfil)}).</div><form id="loanForm" class="form-grid">
+    openModal('Registrar saída / cautela',`<div class="section-note">Esta operação será registrada automaticamente como feita por <strong>${esc(state.user.Nome)}</strong> (${esc(state.user.Perfil)}).</div><form id="loanForm" class="form-grid">
       <label class="full">Item*<select name="itemId" required><option value="">Selecione...</option>${available.map(i=>`<option value="${i.ID}" ${preselect===i.ID?'selected':''}>${esc(i.Codigo)} — ${esc(i.Nome)} — ${esc(itemTypeLabel(i.TipoItem))} (disponível ${fmtNum(i.QuantidadeAtual)})</option>`).join('')}</select></label>
       <div id="loanTypeInfo" class="section-note full"></div>
-      <label>Quantidade*<input name="quantidade" type="number" min="0.01" step="0.01" required></label><label>Data da retirada*<input name="dataRetirada" type="datetime-local" value="${now}" required></label>
-      <label id="responsavelLabel"><span id="responsavelLabelText">Retirado por*</span><div class="autocomplete-wrap"><input name="retiradoPor" required autocomplete="off"><div id="militarySuggestions" class="autocomplete-list hidden"></div></div><span id="militaryHint" class="hint hidden">Digite qualquer parte do nome para ver sugestões do efetivo. Você também pode informar um nome que não esteja cadastrado.</span></label><label>Matrícula / identificação<input name="matricula"></label><label>Setor<input name="setor"></label>
+      <label>Quantidade*<input name="quantidade" type="number" min="1" step="1" inputmode="numeric" required></label><label>Data da retirada*<input name="dataRetirada" type="datetime-local" value="${now}" required></label>
+      <label id="responsavelLabel" class="full"><span id="responsavelLabelText">Retirado por*</span><div class="autocomplete-wrap"><input name="retiradoPor" required autocomplete="off" placeholder="Ex.: Cb QPC 04032 Paulo Tavares Fernandes"><div id="militarySuggestions" class="autocomplete-list hidden"></div></div><span id="militaryHint" class="hint hidden">Digite qualquer parte do posto/graduação, RG ou nome para ver sugestões do efetivo. Ex.: Cb QPC 04032 Paulo Tavares Fernandes. Você também pode informar um militar que não esteja cadastrado.</span></label>
       <label class="cautela-only">Número do processo de cautela no SEI*<input name="processoSEI" placeholder="Ex.: 00000.000000/0000-00"></label><label class="cautela-only">Devolução prevista<input name="prevista" type="datetime-local"></label>
-      <label class="full">Finalidade<input name="finalidade" placeholder="Motivo da retirada"></label><label class="full">Observações<textarea name="observacoes"></textarea></label>
-      <div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Registrar retirada</button></div></form>`);
+      <label class="full">Finalidade / Observações<textarea name="observacoes" placeholder="Informe a finalidade da retirada e qualquer observação necessária."></textarea></label>
+      <div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button><button class="btn primary">Registrar</button></div></form>`);
 
     const form=$('#loanForm'), sel=form.querySelector('[name=itemId]');
     const militaryInput=form.querySelector('[name=retiradoPor]');
@@ -291,8 +290,8 @@
     militaryInput.addEventListener('blur',()=>setTimeout(hideMilitarySuggestions,120));
     const updateType=()=>{
       const item=state.itens.find(x=>x.ID===sel.value), consumo=item&&normalizeItemType(item.TipoItem)==='CONSUMO';
-      $('#loanTypeInfo').innerHTML=item?(consumo?'<strong>Material de consumo:</strong> esta saída será definitiva e não ficará aguardando devolução.':'<strong>Material não consumível:</strong> será registrada uma cautela. Militar e número do processo SEI são obrigatórios.'):'Selecione um item para definir o tipo de retirada.';
-      $('#responsavelLabelText').textContent=!item||consumo?'Retirado por*':'Militar que fez a cautela*';
+      $('#loanTypeInfo').innerHTML=item?(consumo?'<strong>Material de consumo:</strong> esta saída será definitiva e não ficará aguardando devolução.':'<strong>Material não consumível:</strong> será registrada uma cautela. Militar/RG e número do processo SEI são obrigatórios.'):'Selecione um item para definir o tipo de retirada.';
+      $('#responsavelLabelText').textContent=!item||consumo?'Retirado por*':'Militar e RG que fez a cautela*';
       $('#militaryHint').classList.toggle('hidden',!item||consumo);
       if(!item||consumo) hideMilitarySuggestions();
       $$('.cautela-only',form).forEach(el=>el.classList.toggle('hidden',consumo));
@@ -300,7 +299,7 @@
       const prev=form.querySelector('[name=prevista]'); if(consumo) prev.value='';
     };
     sel.addEventListener('change',updateType); updateType();
-    form.addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const loan={itemId:f.itemId,quantidade:num(f.quantidade),retiradoPor:f.retiradoPor,matricula:f.matricula,setor:f.setor,processoSEI:f.processoSEI,finalidade:f.finalidade,observacoes:f.observacoes,dataRetiradaMs:new Date(f.dataRetirada).getTime(),previstaDevolucaoMs:f.prevista?new Date(f.prevista).getTime():null};await mutate('registerLoan',{loan});});
+    form.addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const loan={itemId:f.itemId,quantidade:num(f.quantidade),retiradoPor:f.retiradoPor,processoSEI:f.processoSEI,observacoes:f.observacoes,dataRetiradaMs:new Date(f.dataRetirada).getTime(),previstaDevolucaoMs:f.prevista?new Date(f.prevista).getTime():null};await mutate('registerLoan',{loan});});
   }
 
   function modalReturnSelect(){
@@ -313,7 +312,7 @@
     openModal('Devolver item',`<div class="section-note">Selecione uma cautela que ainda possui quantidade pendente. Itens de consumo e cautelas já totalmente devolvidas não aparecem nesta lista.</div><form id="returnSelectForm" class="form-grid">
       <label class="full">Item retirado / cautela*<select name="retiradaId" required><option value="">Selecione...</option>${pendentes.map(r=>{const p=Math.max(0,num(r.Quantidade)-num(r.QuantidadeDevolvida));return `<option value="${r.ID}">${esc(r.ItemNome)} — ${esc(r.RetiradoPor||'Sem militar')} — SEI ${esc(r.ProcessoSEI||'não informado')} — pendente ${fmtNum(p)}</option>`}).join('')}</select></label>
       <div id="returnSelectInfo" class="section-note full">Selecione uma cautela para visualizar os dados.</div>
-      <div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Continuar para devolução</button></div>
+      <div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button><button class="btn primary">Continuar para devolução</button></div>
     </form>`);
     const form=$('#returnSelectForm'), sel=form.querySelector('[name=retiradaId]');
     const update=()=>{
@@ -330,20 +329,20 @@
     const r=state.retiradas.find(x=>x.ID===id);if(!r)return;
     if(normalizeItemType(r.TipoItem)==='CONSUMO'||r.Status==='CONSUMIDO'){toast('Material de consumo não possui devolução.',true);return}
     const p=Math.max(0,num(r.Quantidade)-num(r.QuantidadeDevolvida));
-    openModal('Registrar devolução',`<div class="section-note"><strong>${esc(r.ItemNome)}</strong> • militar: ${esc(r.RetiradoPor)}${r.ProcessoSEI?' • processo SEI: '+esc(r.ProcessoSEI):''} • pendente: <strong>${fmtNum(p)}</strong><br>A devolução será registrada como feita por <strong>${esc(state.user.Nome)}</strong>.</div><form id="returnForm" class="form-grid"><label>Quantidade devolvida*<input name="quantidade" type="number" min="0.01" max="${p}" step="0.01" value="${p}" required></label><label class="full">Observações<textarea name="observacoes" placeholder="Estado do item, avaria, observações..."></textarea></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Confirmar devolução</button></div></form>`);
+    openModal('Registrar devolução',`<div class="section-note"><strong>${esc(r.ItemNome)}</strong> • militar: ${esc(r.RetiradoPor)}${r.ProcessoSEI?' • processo SEI: '+esc(r.ProcessoSEI):''} • pendente: <strong>${fmtNum(p)}</strong><br>A devolução será registrada como feita por <strong>${esc(state.user.Nome)}</strong>.</div><form id="returnForm" class="form-grid"><label>Quantidade devolvida*<input name="quantidade" type="number" min="0.01" max="${p}" step="0.01" value="${p}" required></label><label class="full">Observações<textarea name="observacoes" placeholder="Estado do item, avaria, observações..."></textarea></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button><button class="btn primary">Confirmar devolução</button></div></form>`);
     $('#returnForm').addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));await mutate('registerReturn',{retiradaId:id,quantidade:num(f.quantidade),observacoes:f.observacoes});});
   }
 
   function modalUser(id){
     if(!isAdmin()){toast('Somente o administrador pode gerenciar usuários.',true);return}
     const u=id?state.usuarios.find(x=>x.ID===id):null;
-    openModal(u?'Editar usuário':'Novo usuário',`<form id="userForm" class="form-grid"><label>Nome*<input name="nome" required value="${attr(u?.Nome||'')}"></label><label>Login*<input name="login" required value="${attr(u?.Login||'')}"></label><label>Perfil<select name="perfil">${['ADMIN','ADJUNTO'].map(p=>`<option ${p===(u?.Perfil||'ADJUNTO')?'selected':''}>${p}</option>`).join('')}</select></label><label>Status<select name="ativo"><option value="true">Ativo</option><option value="false">Inativo</option></select></label><label class="full">${u?'Novo PIN (deixe vazio para manter)':'PIN*'}<input name="pin" type="password" inputmode="numeric" ${u?'':'required'}><span class="hint">De 4 a 10 dígitos numéricos.</span></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Salvar</button></div></form>`);
+    openModal(u?'Editar usuário':'Novo usuário',`<form id="userForm" class="form-grid"><label>Nome*<input name="nome" required value="${attr(u?.Nome||'')}"></label><label>Login*<input name="login" required value="${attr(u?.Login||'')}"></label><label>Perfil<select name="perfil">${['ADMIN','ADJUNTO'].map(p=>`<option ${p===(u?.Perfil||'ADJUNTO')?'selected':''}>${p}</option>`).join('')}</select></label><label>Status<select name="ativo"><option value="true">Ativo</option><option value="false">Inativo</option></select></label><label class="full">${u?'Novo PIN (deixe vazio para manter)':'PIN*'}<input name="pin" type="password" inputmode="numeric" ${u?'':'required'}><span class="hint">De 4 a 10 dígitos numéricos.</span></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button><button class="btn primary">Salvar</button></div></form>`);
     if(u) $('#userForm [name=ativo]').value=String(u.Ativo!==false);
     $('#userForm').addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));f.ID=id||'';f.ativo=f.ativo==='true';await mutate('saveUser',{user:f});});
   }
 
   function modalChangePin(){
-    openModal('Alterar meu PIN',`<form id="pinForm" class="form-grid"><label>PIN atual<input name="pinAtual" type="password" inputmode="numeric" required></label><label>Novo PIN<input name="novoPin" type="password" inputmode="numeric" required></label><label class="full">Confirmar novo PIN<input name="confirmar" type="password" inputmode="numeric" required></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Alterar PIN</button></div></form>`);
+    openModal('Alterar meu PIN',`<form id="pinForm" class="form-grid"><label>PIN atual<input name="pinAtual" type="password" inputmode="numeric" required></label><label>Novo PIN<input name="novoPin" type="password" inputmode="numeric" required></label><label class="full">Confirmar novo PIN<input name="confirmar" type="password" inputmode="numeric" required></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Fechar</button><button class="btn primary">Alterar PIN</button></div></form>`);
     $('#pinForm').addEventListener('submit',async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));if(f.novoPin!==f.confirmar){toast('A confirmação do novo PIN não confere.',true);return}await mutate('changePin',{pinAtual:f.pinAtual,novoPin:f.novoPin},false);closeModal();toast('PIN alterado com sucesso.');});
   }
 
@@ -365,7 +364,7 @@
   function moveIcon(t){return({RETIRADA:'↗',CONSUMO:'↗',DEVOLUCAO:'↙',ENTRADA:'＋',AJUSTE:'⚙',CADASTRO_ITEM:'📦',EDICAO_ITEM:'✎',REGISTRO_LEGADO:'☷',ENTRADA_INICIAL:'📦'})[t]||'•'}
 
   function exportItems(){const rows=filteredItems().map(i=>({Codigo:i.Codigo,Nome:i.Nome,Tipo:itemTypeLabel(i.TipoItem),Categoria:i.Categoria,Quantidade:i.QuantidadeAtual,AlertaEstoqueBaixoEmOuMenos:i.EstoqueMinimo,Localizacao:i.Localizacao,Status:statusItem(i),Descricao:i.Descricao}));downloadCSV('itens_almox.csv',rows)}
-  function exportLoans(){const rows=filteredLoans().map(r=>({Item:r.ItemNome,Codigo:r.CodigoItem,Tipo:itemTypeLabel(r.TipoItem),Quantidade:r.Quantidade,Devolvida:r.QuantidadeDevolvida,ResponsavelMilitar:r.RetiradoPor,Matricula:r.Matricula,Setor:r.Setor,ProcessoSEI:r.ProcessoSEI,AdjuntoRetirada:r.AdjuntoRetirada,AdjuntoDevolucao:r.AdjuntoDevolucao,DataRetirada:fmtDate(r.DataRetirada),Prevista:fmtDate(r.PrevistaDevolucao),DataDevolucao:fmtDate(r.DataDevolucao),Status:isOverdue(r)?'ATRASADA':r.Status,Finalidade:r.Finalidade,Observacoes:r.Observacoes}));downloadCSV('retiradas_almox.csv',rows)}
+  function exportLoans(){const rows=filteredLoans().map(r=>({Item:r.ItemNome,Codigo:r.CodigoItem,Tipo:itemTypeLabel(r.TipoItem),Quantidade:r.Quantidade,Devolvida:r.QuantidadeDevolvida,MilitarERG:r.RetiradoPor,ProcessoSEI:r.ProcessoSEI,AdjuntoRetirada:r.AdjuntoRetirada,AdjuntoDevolucao:r.AdjuntoDevolucao,DataRetirada:fmtDate(r.DataRetirada),Prevista:fmtDate(r.PrevistaDevolucao),DataDevolucao:fmtDate(r.DataDevolucao),Status:isOverdue(r)?'ATRASADA':r.Status,FinalidadeObservacoes:[r.Finalidade,r.Observacoes].filter(Boolean).join(' | ')}));downloadCSV('cautelas_almox.csv',rows)}
   function downloadCSV(name,rows){if(!rows.length){toast('Não há dados para exportar.',true);return}const keys=Object.keys(rows[0]);const safe=v=>{let x=String(v??'');if(/^[=+\-@]/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"'};const csv='\ufeff'+[keys.join(';'),...rows.map(r=>keys.map(k=>safe(r[k])).join(';'))].join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 
   function fmtDate(v){if(!v)return'—';const d=new Date(v);return isNaN(d)?'—':new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(d)}

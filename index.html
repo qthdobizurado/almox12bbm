@@ -28,7 +28,7 @@
       <nav id="nav">
         <button class="nav-item active" data-view="dashboard">▦ <span>Dashboard</span></button>
         <button class="nav-item" data-view="itens">📦 <span>Itens</span></button>
-        <button class="nav-item" data-view="retiradas">↗ <span>Retiradas</span></button>
+        <button class="nav-item" data-view="retiradas">↗ <span>Cautelas</span></button>
         <button class="nav-item" data-view="historico">☷ <span>Histórico</span></button>
         <button class="nav-item admin-only" data-view="configuracoes">⚙ <span>Configurações</span></button>
       </nav>
@@ -46,11 +46,11 @@
       </header>
 
       <section id="view-dashboard" class="view active-view">
-        <div class="page-head"><div><h2>Dashboard</h2><p>Visão geral do almoxarifado.</p></div><div class="actions"><button class="btn secondary can-write" id="quickItemBtn">+ Cadastrar item</button><button class="btn primary can-write" id="quickLoanBtn">+ Registrar retirada</button><button class="btn primary can-write" id="quickReturnBtn">↩ Devolver item</button></div></div>
+        <div class="page-head"><div><h2>Dashboard</h2><p>Visão geral do almoxarifado.</p></div><div class="actions"><button class="btn secondary can-write" id="quickItemBtn">+ Cadastrar item</button><button class="btn primary can-write" id="quickLoanBtn">+ Registrar saída / cautela</button><button class="btn primary can-write" id="quickReturnBtn">↩ Devolver item</button></div></div>
         <div class="kpi-grid" id="kpiGrid"></div>
         <div class="grid-2">
           <div class="panel"><div class="panel-head"><h3>⚠ Alertas de estoque</h3><button class="link-btn" data-goto="itens">Ver itens</button></div><div id="stockAlerts"></div></div>
-          <div class="panel"><div class="panel-head"><h3>⏰ Cautelas pendentes</h3><button class="link-btn" data-goto="retiradas">Ver retiradas</button></div><div id="loanAlerts"></div></div>
+          <div class="panel"><div class="panel-head"><h3>⏰ Cautelas pendentes</h3><button class="link-btn" data-goto="retiradas">Ver cautelas</button></div><div id="loanAlerts"></div></div>
         </div>
         <div class="panel"><div class="panel-head"><h3>Atividade recente</h3></div><div id="recentActivity"></div></div>
       </section>
@@ -62,9 +62,9 @@
       </section>
 
       <section id="view-retiradas" class="view">
-        <div class="page-head"><div><h2>Cautelas pendentes</h2><p>Aqui ficam somente materiais não consumíveis que ainda possuem quantidade a devolver. Saídas de consumo e cautelas encerradas ficam no Histórico.</p></div><div class="actions"><button class="btn secondary" id="exportLoansBtn">Exportar CSV</button><button class="btn primary can-write" id="newLoanBtn">+ Registrar retirada</button><button class="btn primary can-write" id="returnItemBtn">↩ Devolver item</button></div></div>
+        <div class="page-head"><div><h2>Cautelas pendentes</h2><p>Aqui ficam somente materiais não consumíveis que ainda possuem quantidade a devolver. Saídas de consumo e cautelas encerradas ficam no Histórico.</p></div><div class="actions"><button class="btn secondary" id="exportLoansBtn">Exportar CSV</button><button class="btn primary can-write" id="newLoanBtn">+ Registrar saída / cautela</button><button class="btn primary can-write" id="returnItemBtn">↩ Devolver item</button></div></div>
         <div class="panel filters"><input id="loanSearch" placeholder="⌕ Item, militar, processo SEI ou adjunto..."/><select id="loanStatus"><option value="">Todas as pendentes</option><option value="ABERTA">Cautela aberta</option><option value="PARCIAL">Devolução parcial</option><option value="ATRASADA">Atrasada</option></select><input type="date" id="loanFrom"/><input type="date" id="loanTo"/></div>
-        <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Tipo</th><th>Responsável / militar</th><th>Processo SEI</th><th>Adjunto responsável</th><th>Retirada</th><th>Prevista</th><th>Qtd.</th><th>Status</th><th class="can-write">Ações</th></tr></thead><tbody id="loansBody"></tbody></table></div>
+        <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Tipo</th><th>Militar / RG</th><th>Processo SEI</th><th>Adjunto responsável</th><th>Retirada</th><th>Prevista</th><th>Qtd.</th><th>Status</th><th class="can-write">Ações</th></tr></thead><tbody id="loansBody"></tbody></table></div>
       </section>
 
       <section id="view-historico" class="view">
@@ -73,7 +73,7 @@
           <label>De<input type="date" id="moveFrom"/></label>
           <label>Até<input type="date" id="moveTo"/></label>
           <label>Item / código<input id="moveItem" placeholder="Nome ou código do item"/></label>
-          <label>Militar<input id="moveMilitary" placeholder="Militar responsável"/></label>
+          <label>Militar / RG<input id="moveMilitary" placeholder="Militar ou RG"/></label>
           <label>Processo SEI<input id="moveProcess" placeholder="Número do processo"/></label>
           <label>Adjunto / operador<input id="moveUser" placeholder="Nome do usuário"/></label>
           <label>Tipo<select id="moveType"><option value="">Todos os tipos</option><option value="RETIRADA">Cautela</option><option value="CONSUMO">Consumo</option><option value="DEVOLUCAO">Devolução</option><option value="ENTRADA">Entrada</option><option value="AJUSTE">Ajuste</option><option value="CADASTRO_ITEM">Cadastro de item</option><option value="EDICAO_ITEM">Edição de item</option><option value="REGISTRO_LEGADO">Registro migrado</option></select></label>
@@ -97,13 +97,13 @@
         </div>
 
         <div id="config-efetivo" class="config-panel">
-          <div class="page-head compact-head"><div><h3>Efetivo do quartel</h3><p>Informe um militar por linha. A lista será usada somente para sugerir nomes durante a cautela; ainda será possível digitar qualquer outro nome.</p></div></div>
+          <div class="page-head compact-head"><div><h3>Efetivo do quartel</h3><p>Informe um militar por linha, de preferência com posto/graduação, RG e nome. A lista será usada somente para sugerir durante a cautela; ainda será possível digitar qualquer outro militar.</p></div></div>
           <div class="panel efetivo-editor">
             <label for="efetivoTextarea">Militares do efetivo</label>
             <textarea id="efetivoTextarea" rows="18" placeholder="Exemplo:
-1º Ten João da Silva
-2º Sgt Maria Souza
-Cb Carlos Pereira"></textarea>
+Cb QPC 04032 Paulo Tavares Fernandes
+2º Sgt QPC 01234 Maria Souza
+1º Ten QPC 05678 João da Silva"></textarea>
             <div class="efetivo-footer"><span id="efetivoCount" class="muted small">0 militares</span><button class="btn primary" type="button" id="saveEfetivoBtn">Salvar efetivo</button></div>
           </div>
         </div>
