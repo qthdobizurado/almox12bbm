@@ -30,7 +30,7 @@
         <button class="nav-item" data-view="itens">📦 <span>Itens</span></button>
         <button class="nav-item" data-view="retiradas">↗ <span>Cautelas</span></button>
         <button class="nav-item" data-view="historico">☷ <span>Histórico</span></button>
-        <button class="nav-item admin-only" data-view="configuracoes">⚙ <span>Configurações</span></button>
+        <button class="nav-item admin-only" data-view="configuracoes">⚙ <span>Configurações de Adm</span></button>
       </nav>
       <div class="sidebar-bottom">
         <button id="changePinBtn" class="nav-item">🔑 <span>Alterar PIN</span></button>
@@ -46,7 +46,7 @@
       </header>
 
       <section id="view-dashboard" class="view active-view">
-        <div class="page-head"><div><h2>Dashboard</h2><p>Visão geral do almoxarifado.</p></div><div class="actions"><button class="btn secondary can-write" id="quickItemBtn">+ Cadastrar item</button><button class="btn primary can-write" id="quickLoanBtn">+ Registrar saída / cautela</button><button class="btn primary can-write" id="quickReturnBtn">↩ Devolver item</button></div></div>
+        <div class="page-head"><div><h2>Dashboard</h2><p>Visão geral do almoxarifado.</p></div><div class="actions"><button class="btn secondary can-write" id="quickItemBtn">+ Solicitar cadastro de item</button><button class="btn primary can-write" id="quickLoanBtn">+ Registrar saída / cautela</button><button class="btn primary can-write" id="quickReturnBtn">↩ Devolver item</button></div></div>
         <div class="kpi-grid" id="kpiGrid"></div>
         <div class="grid-2">
           <div class="panel"><div class="panel-head"><h3>⚠ Alertas de estoque</h3><button class="link-btn" data-goto="itens">Ver itens</button></div><div id="stockAlerts"></div></div>
@@ -56,9 +56,9 @@
       </section>
 
       <section id="view-itens" class="view">
-        <div class="page-head"><div><h2>Itens do almoxarifado</h2><p>Estoque, localização, consumo e material de cautela.</p></div><div class="actions"><button class="btn secondary" id="exportItemsBtn">Exportar CSV</button><button class="btn primary can-write" id="newItemBtn">+ Cadastrar item</button></div></div>
+        <div class="page-head"><div><h2>Itens do almoxarifado</h2><p>Estoque, localização, consumo e material de cautela.</p></div><div class="actions"><button class="btn secondary" id="exportItemsBtn">Exportar CSV</button><button class="btn primary can-write" id="newItemBtn">+ Solicitar cadastro de item</button></div></div>
         <div class="panel filters"><input id="itemSearch" placeholder="⌕ Pesquisar..."/><select id="itemCategory"><option value="">Todas as categorias</option></select><select id="itemType"><option value="">Todos os tipos</option><option value="CONSUMO">Consumo</option><option value="NAO_CONSUMO">Não consumo / cautela</option></select><select id="itemStatus"><option value="">Todos os status</option><option value="NORMAL">Normal</option><option value="BAIXO">Estoque baixo</option><option value="ZERADO">Zerado</option><option value="BAIXADO">Baixado</option></select><input id="itemLocation" placeholder="Localização" /></div>
-        <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Tipo</th><th>Categoria</th><th>Quantidade</th><th>Alerta baixo em</th><th>Localização</th><th>Status</th><th class="can-write">Ações</th></tr></thead><tbody id="itemsBody"></tbody></table></div>
+        <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Tipo</th><th>Categoria</th><th>Ativos</th><th>Baixados</th><th>Total</th><th>Alerta baixo em</th><th>Localização</th><th>Status</th><th class="can-write">Ações</th></tr></thead><tbody id="itemsBody"></tbody></table></div>
       </section>
 
       <section id="view-retiradas" class="view">
@@ -79,20 +79,22 @@
           <label>Tipo<select id="moveType"><option value="">Todos os tipos</option><option value="RETIRADA">Cautela</option><option value="CONSUMO">Consumo</option><option value="DEVOLUCAO">Devolução</option><option value="ENTRADA">Entrada</option><option value="AJUSTE">Ajuste</option><option value="CADASTRO_ITEM">Cadastro de item</option><option value="EDICAO_ITEM">Edição de item</option><option value="REGISTRO_LEGADO">Registro migrado</option></select></label>
           <div class="history-filter-actions"><button class="btn secondary" type="button" id="historyClearBtn">Limpar</button><button class="btn primary" type="button" id="historySearchBtn">Pesquisar</button></div>
         </div>
-        <div class="panel table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Quantidade</th><th>Saldo</th><th>Militar</th><th>Processo SEI</th><th>Adjunto retirada</th><th>Adjunto devolução</th><th>Operador</th><th>Observação</th></tr></thead><tbody id="movesBody"></tbody></table></div>
+        <div class="panel table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Qtd. total</th><th>Dev. ativa</th><th>Dev. baixada</th><th>Saldo ativo</th><th>Militar</th><th>Processo SEI</th><th>Adjunto retirada</th><th>Adjunto devolução</th><th>Operador</th><th>Observação</th></tr></thead><tbody id="movesBody"></tbody></table></div>
         <div class="history-pagination"><button class="btn secondary" type="button" id="historyPrevBtn">← Anterior</button><span id="historyPageInfo">Página 1</span><button class="btn secondary" type="button" id="historyNextBtn">Próxima →</button></div>
       </section>
 
       <section id="view-configuracoes" class="view admin-only">
-        <div class="page-head"><div><h2>Configurações</h2><p>Área exclusiva do perfil ADMIN.</p></div></div>
-        <div class="config-tabs" role="tablist" aria-label="Configurações">
+        <div class="page-head"><div><h2>Configurações de Adm</h2><p>Área exclusiva do perfil ADMIN.</p></div></div>
+        <div class="config-tabs" role="tablist" aria-label="Configurações de Adm">
           <button class="config-tab active" type="button" data-config-tab="usuarios">👥 Usuários</button>
           <button class="config-tab" type="button" data-config-tab="efetivo">🎖 Efetivo</button>
+          <button class="config-tab" type="button" data-config-tab="itens">📦 Itens</button>
+          <button class="config-tab" type="button" data-config-tab="solicitacoes">📝 Solicitações de cadastro</button>
         </div>
 
         <div id="config-usuarios" class="config-panel active-config-panel">
           <div class="page-head compact-head"><div><h3>Usuários do sistema</h3><p>Crie e edite acessos ADMIN e ADJUNTO.</p></div><button class="btn primary" id="newUserBtn">+ Novo usuário</button></div>
-          <div class="panel info-box"><strong>Perfis:</strong> ADMIN pode tudo, inclusive acessar Configurações. ADJUNTO pode operar o almoxarifado, mas não pode criar usuários nem alterar o efetivo.</div>
+          <div class="panel info-box"><strong>Perfis:</strong> ADMIN pode tudo, inclusive acessar Configurações de Adm. ADJUNTO pode operar o almoxarifado, mas não pode criar usuários nem alterar as configurações administrativas.</div>
           <div class="panel table-wrap"><table><thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Status</th><th>Atualizado</th><th>Ações</th></tr></thead><tbody id="usersBody"></tbody></table></div>
         </div>
 
@@ -101,11 +103,21 @@
           <div class="panel efetivo-editor">
             <label for="efetivoTextarea">Militares do efetivo</label>
             <textarea id="efetivoTextarea" rows="18" placeholder="Exemplo:
-Cb QPC 04032 Paulo Tavares Fernandes
+Cb QPC 04032 Paulo Tavares FERNANDES
 2º Sgt QPC 01234 Maria Souza
 1º Ten QPC 05678 João da Silva"></textarea>
             <div class="efetivo-footer"><span id="efetivoCount" class="muted small">0 militares</span><button class="btn primary" type="button" id="saveEfetivoBtn">Salvar efetivo</button></div>
           </div>
+        </div>
+
+        <div id="config-itens" class="config-panel">
+          <div class="page-head compact-head"><div><h3>Cadastro de itens</h3><p>Cadastre novos itens e edite os itens já existentes.</p></div><button class="btn primary" id="adminNewItemBtn">+ Cadastrar novo item</button></div>
+          <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Tipo</th><th>Categoria</th><th>Ativos</th><th>Baixados</th><th>Localização</th><th>Status</th><th>Ações</th></tr></thead><tbody id="adminItemsBody"></tbody></table></div>
+        </div>
+
+        <div id="config-solicitacoes" class="config-panel">
+          <div class="page-head compact-head"><div><h3>Solicitações de cadastro</h3><p>Revise, edite e transforme solicitações em itens cadastrados.</p></div></div>
+          <div class="panel table-wrap"><table><thead><tr><th>Solicitado em</th><th>Solicitado por</th><th>Item</th><th>Tipo</th><th>Qtd. sugerida</th><th>Localização</th><th>Status</th><th>Ações</th></tr></thead><tbody id="requestsBody"></tbody></table></div>
         </div>
       </section>
     </main>
