@@ -94,7 +94,7 @@
   function showLogin(){ $('#appView').classList.add('hidden'); $('#loginView').classList.remove('hidden'); }
   function showApp(){
     $('#loginView').classList.add('hidden'); $('#appView').classList.remove('hidden');
-    $('#brandName').textContent=state.config.nomeSistema||'Controle de Almoxarifado'; $('#brandUnit').textContent=state.config.unidade||'Almoxarifado';
+    $('#brandName').textContent=state.config.nomeSistema||'Controle de Almoxarifado';
     $('#userName').textContent=state.user.Nome; $('#userRole').textContent=state.user.Perfil; $('#userInitial').textContent=(state.user.Nome||'U').trim().charAt(0).toUpperCase();
     const admin=isAdmin();
     $$('.admin-only').forEach(x=>x.classList.toggle('hidden',!admin));
@@ -148,7 +148,7 @@
 
   function filteredItems(){
     const q=norm($('#itemSearch').value), cat=$('#itemCategory').value, typ=$('#itemType').value, st=$('#itemStatus').value, loc=norm($('#itemLocation').value);
-    return state.itens.filter(i=>(!q||norm([i.Codigo,i.Nome,i.Categoria,i.Localizacao,i.Descricao,itemTypeLabel(i.TipoItem)].join(' ')).includes(q))&&(!cat||i.Categoria===cat)&&(!typ||normalizeItemType(i.TipoItem)===typ)&&(!st||statusItem(i)===st)&&(!loc||norm(i.Localizacao).includes(loc)));
+    return state.itens.filter(i=>itemReal(i)&&(!q||norm([i.Codigo,i.Nome,i.Categoria,i.Localizacao,i.Descricao,itemTypeLabel(i.TipoItem)].join(' ')).includes(q))&&(!cat||i.Categoria===cat)&&(!typ||normalizeItemType(i.TipoItem)===typ)&&(!st||statusItem(i)===st)&&(!loc||norm(i.Localizacao).includes(loc)));
   }
 
   function renderItems(){
@@ -203,7 +203,8 @@
 
   function renderUsers(){
     if(!state.user||!isAdmin()) return;
-    $('#usersBody').innerHTML=state.usuarios.length?state.usuarios.map(u=>`<tr><td><strong>${esc(u.Nome)}</strong></td><td>${esc(u.Login)}</td><td><span class="badge open">${esc(u.Perfil)}</span></td><td>${u.Ativo?'<span class="badge">Ativo</span>':'<span class="badge off">Inativo</span>'}</td><td>${u.AtualizadoEm?fmtDate(u.AtualizadoEm):'—'}</td><td><button class="mini-btn" onclick="almox.editUser('${u.ID}')">Editar</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty">Nenhum usuário.</td></tr>`;
+    const usuariosValidos=state.usuarios.filter(u=>String(u.ID||'').trim()&&String(u.Nome||'').trim()&&String(u.Login||'').trim());
+    $('#usersBody').innerHTML=usuariosValidos.length?usuariosValidos.map(u=>`<tr><td><strong>${esc(u.Nome)}</strong></td><td>${esc(u.Login)}</td><td><span class="badge open">${esc(u.Perfil)}</span></td><td>${u.Ativo?'<span class="badge">Ativo</span>':'<span class="badge off">Inativo</span>'}</td><td>${u.AtualizadoEm?fmtDate(u.AtualizadoEm):'—'}</td><td><button class="mini-btn" onclick="almox.editUser('${u.ID}')">Editar</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty">Nenhum usuário cadastrado.</td></tr>`;
   }
 
 
@@ -353,6 +354,7 @@
   function toast(msg,error=false){const t=$('#toast');t.textContent=msg;t.classList.toggle('error',error);t.classList.remove('hidden');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.add('hidden'),4200)}
   function setLoading(on){$('#loading').classList.toggle('hidden',!on)}
 
+  function itemReal(i){return !!(String(i?.ID||'').trim()||String(i?.Codigo||'').trim()||String(i?.Nome||'').trim())}
   function normalizeItemType(v){return String(v||'NAO_CONSUMO').toUpperCase()==='CONSUMO'?'CONSUMO':'NAO_CONSUMO'}
   function itemTypeLabel(v){return normalizeItemType(v)==='CONSUMO'?'Consumo':'Não consumo / cautela'}
   function typeBadge(v){return normalizeItemType(v)==='CONSUMO'?'<span class="badge">Consumo</span>':'<span class="badge open">Cautela</span>'}
