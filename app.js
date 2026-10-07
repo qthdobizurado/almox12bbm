@@ -3,7 +3,10 @@
   const PLACEHOLDER = 'COLE_AQUI_A_URL_DO_APPS_SCRIPT_EXEC';
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const state = { token: localStorage.getItem('almox_token') || '', user:null, config:{}, itens:[], retiradas:[], movimentos:[], usuarios:[], dashboard:{}, currentView:'dashboard' };
+  const state = { token: localStorage.getItem('almox_token') || '', user:null, config:{}, itens:[], retiradas:[], movimentos:[], usuarios:[], efetivo:[], dashboard:{}, currentView:'dashboard', configTab:'usuarios', history:{rows:[],page:1,hasPrevious:false,hasMore:false,loaded:false} };
+
+  function normalizedRole(v){ return String(v || '').trim().toUpperCase(); }
+  function isAdmin(){ return normalizedRole(state.user?.Perfil) === 'ADMIN'; }
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -31,11 +34,18 @@
     $('#returnItemBtn').addEventListener('click', modalReturnSelect);
     $('#quickReturnBtn').addEventListener('click', modalReturnSelect);
     $('#newUserBtn').addEventListener('click', () => modalUser());
+    $$('.config-tab').forEach(b => b.addEventListener('click', () => switchConfigTab(b.dataset.configTab)));
+    $('#saveEfetivoBtn').addEventListener('click', saveEfetivo);
+    $('#efetivoTextarea').addEventListener('input', updateEfetivoCount);
     $('#exportItemsBtn').addEventListener('click', exportItems);
     $('#exportLoansBtn').addEventListener('click', exportLoans);
     ['itemSearch','itemCategory','itemType','itemStatus','itemLocation'].forEach(id => $('#'+id).addEventListener(id==='itemSearch'||id==='itemLocation'?'input':'change', renderItems));
     ['loanSearch','loanStatus','loanFrom','loanTo'].forEach(id => $('#'+id).addEventListener(id==='loanSearch'?'input':'change', renderLoans));
-    ['moveSearch','moveType'].forEach(id => $('#'+id).addEventListener(id==='moveSearch'?'input':'change', renderMoves));
+    $('#historySearchBtn').addEventListener('click', () => loadHistory(1));
+    $('#historyClearBtn').addEventListener('click', clearHistoryFilters);
+    $('#historyPrevBtn').addEventListener('click', () => loadHistory(Math.max(1,state.history.page-1)));
+    $('#historyNextBtn').addEventListener('click', () => { if(state.history.hasMore) loadHistory(state.history.page+1); });
+    ['moveFrom','moveTo','moveItem','moveMilitary','moveProcess','moveUser','moveType'].forEach(id => $('#'+id).addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); loadHistory(1); } }));
   }
 
   async function api(action, data={}){
@@ -70,8 +80,11 @@
     setLoading(true);
     try{
       const out = await api('bootstrap');
-      Object.assign(state,{user:out.user,config:out.config||{},itens:out.itens||[],retiradas:out.retiradas||[],movimentos:out.movimentos||[],usuarios:out.usuarios||[],dashboard:out.dashboard||{}});
+      Object.assign(state,{user:out.user,config:out.config||{},itens:out.itens||[],retiradas:out.retiradas||[],movimentos:out.movimentos||[],usuarios:out.usuarios||[],efetivo:out.efetivo||[],dashboard:out.dashboard||{}});
+      if (state.user) state.user.Perfil = normalizedRole(state.user.Perfil);
+      state.history.loaded=false;
       showApp(); renderAll();
+      if(state.currentView==='historico') await loadHistory(1);
     }catch(err){
       if (/sessao|sessão|login|usuario inativo|usuário inativo/i.test(err.message)){ state.token=''; localStorage.removeItem('almox_token'); showLogin(); }
       throw err;
@@ -81,18 +94,40 @@
   function showLogin(){ $('#appView').classList.add('hidden'); $('#loginView').classList.remove('hidden'); }
   function showApp(){
     $('#loginView').classList.add('hidden'); $('#appView').classList.remove('hidden');
-    $('#brandName').textContent=state.config.nomeSistema||'Almox Control'; $('#brandUnit').textContent=state.config.unidade||'Almoxarifado';
+    $('#brandName').textContent=state.config.nomeSistema||'Controle de Almoxarifado'; $('#brandUnit').textContent=state.config.unidade||'Almoxarifado';
     $('#userName').textContent=state.user.Nome; $('#userRole').textContent=state.user.Perfil; $('#userInitial').textContent=(state.user.Nome||'U').trim().charAt(0).toUpperCase();
-    const admin=state.user.Perfil==='ADMIN';
+    const admin=isAdmin();
     $$('.admin-only').forEach(x=>x.classList.toggle('hidden',!admin));
     $$('.can-write').forEach(x=>x.classList.remove('hidden'));
+    if(!admin && state.currentView==='configuracoes') switchView('dashboard');
   }
 
-  function renderAll(){ renderDashboard(); renderCategories(); renderItems(); renderLoans(); renderMoves(); renderUsers(); }
+  function renderAll(){ renderDashboard(); renderCategories(); renderItems(); renderLoans(); renderMoves(); renderUsers(); renderEfetivo(); }
   function switchView(name){
-    if(name==='usuarios' && state.user?.Perfil!=='ADMIN') name='dashboard';
-    state.currentView=name; $$('.view').forEach(v=>v.classList.remove('active-view')); $('#view-'+name)?.classList.add('active-view');
-    $$('#nav [data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name)); $('#sidebar').classList.remove('open');
+    if(name==='configuracoes' && !isAdmin()){
+      toast('A área de configurações é exclusiva do perfil ADMIN.', true);
+      return;
+    }
+    const target=$('#view-'+name);
+    if(!target){ toast('Tela não encontrada.', true); return; }
+    state.currentView=name;
+    $$('.view').forEach(v=>v.classList.remove('active-view'));
+    target.classList.remove('hidden');
+    target.classList.add('active-view');
+    $$('#nav [data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===name));
+    $('#sidebar').classList.remove('open');
+    if(name==='configuracoes') { renderUsers(); renderEfetivo(); switchConfigTab(state.configTab || 'usuarios'); }
+    if(name==='historico' && !state.history.loaded) loadHistory(1);
+  }
+
+  function switchConfigTab(tab){
+    if(!isAdmin()) return;
+    state.configTab = tab === 'efetivo' ? 'efetivo' : 'usuarios';
+    $$('.config-tab').forEach(b=>b.classList.toggle('active', b.dataset.configTab===state.configTab));
+    $$('.config-panel').forEach(p=>p.classList.remove('active-config-panel'));
+    const panel=$('#config-'+state.configTab);
+    if(panel) panel.classList.add('active-config-panel');
+    if(state.configTab==='usuarios') renderUsers(); else renderEfetivo();
   }
 
   function renderDashboard(){
@@ -103,7 +138,7 @@
     $('#stockAlerts').innerHTML=alerts.length?alerts.map(i=>`<div class="list-row"><div class="item-icon">${esc(i.Icone||'📦')}</div><div class="grow"><strong class="truncate">${esc(i.Nome)}</strong><div class="meta">${esc(i.Codigo)} • ${esc(i.Localizacao||'Sem localização')} • ${esc(itemTypeLabel(i.TipoItem))}</div></div>${badgeItem(i)}</div>`).join(''):'<div class="empty">Nenhum alerta de estoque.</div>';
     const ab=state.retiradas.filter(r=>['ABERTA','PARCIAL'].includes(r.Status)).sort((a,b)=>dateMs(a.PrevistaDevolucao||'9999')-dateMs(b.PrevistaDevolucao||'9999')).slice(0,8);
     $('#loanAlerts').innerHTML=ab.length?ab.map(r=>`<div class="list-row"><div class="item-icon">↗</div><div class="grow"><strong class="truncate">${esc(r.ItemNome)}</strong><div class="meta">${esc(r.RetiradoPor)}${r.ProcessoSEI?' • SEI '+esc(r.ProcessoSEI):''} • ${r.PrevistaDevolucao?fmtDate(r.PrevistaDevolucao):'Sem prazo'}</div></div>${badgeLoan(r)}</div>`).join(''):'<div class="empty">Nenhuma cautela pendente.</div>';
-    $('#recentActivity').innerHTML=state.movimentos.slice(0,10).map(m=>`<div class="list-row"><div class="item-icon">${moveIcon(m.Tipo)}</div><div class="grow"><strong>${esc(labelMove(m.Tipo))} · ${esc(m.ItemNome)}</strong><div class="meta">${fmtDate(m.DataHora)} • ${esc(m.UsuarioSistema||m.Responsavel||'')}</div></div><span class="number">${fmtNum(m.Quantidade)}</span></div>`).join('')||'<div class="empty">Sem movimentações ainda.</div>';
+    $('#recentActivity').innerHTML=state.movimentos.slice(0,10).map(m=>`<div class="list-row"><div class="item-icon">${moveIcon(m.Tipo)}</div><div class="grow"><strong>${esc(labelMove(m.Tipo))} · ${esc(m.ItemNome)}</strong><div class="meta">${fmtDate(m.DataHora)} • ${esc(m.UsuarioSistema||m.Militar||'')}</div></div><span class="number">${fmtNum(m.Quantidade)}</span></div>`).join('')||'<div class="empty">Sem movimentações ainda.</div>';
   }
 
   function renderCategories(){
@@ -137,15 +172,70 @@
     }).join(''):`<tr><td colspan="10" class="empty">Nenhuma retirada encontrada.</td></tr>`;
   }
 
+  function historyFilters(){
+    return {de:$('#moveFrom').value,ate:$('#moveTo').value,item:$('#moveItem').value.trim(),militar:$('#moveMilitary').value.trim(),processo:$('#moveProcess').value.trim(),usuario:$('#moveUser').value.trim(),tipo:$('#moveType').value};
+  }
+
+  async function loadHistory(page=1){
+    if(!state.token) return;
+    setLoading(true);
+    try{
+      const out=await api('searchHistory',{filters:historyFilters(),page});
+      state.history={rows:out.rows||[],page:out.page||1,hasPrevious:!!out.hasPrevious,hasMore:!!out.hasMore,loaded:true};
+      renderMoves();
+    }catch(err){ toast(err.message,true); }
+    finally{ setLoading(false); }
+  }
+
+  function clearHistoryFilters(){
+    ['moveFrom','moveTo','moveItem','moveMilitary','moveProcess','moveUser'].forEach(id=>$('#'+id).value='');
+    $('#moveType').value='';
+    loadHistory(1);
+  }
+
   function renderMoves(){
-    const q=norm($('#moveSearch').value), t=$('#moveType').value;
-    const rows=state.movimentos.filter(m=>(!q||norm([m.CodigoItem,m.ItemNome,m.Responsavel,m.ProcessoSEI,m.Observacao,m.UsuarioSistema].join(' ')).includes(q))&&(!t||m.Tipo===t));
-    $('#movesBody').innerHTML=rows.length?rows.map(m=>`<tr><td>${fmtDate(m.DataHora)}</td><td><span class="badge ${m.Tipo==='RETIRADA'?'open':m.Tipo==='DEVOLUCAO'||m.Tipo==='CONSUMO'?'':'off'}">${esc(labelMove(m.Tipo))}</span></td><td><strong>${esc(m.ItemNome)}</strong><div class="meta">${esc(m.CodigoItem)}</div></td><td class="number">${fmtNum(m.Quantidade)}</td><td class="number">${fmtNum(m.SaldoAntes)} → ${fmtNum(m.SaldoDepois)}</td><td>${esc(m.Responsavel||'—')}</td><td>${esc(m.ProcessoSEI||'—')}</td><td>${esc(m.UsuarioSistema||'—')}</td><td>${esc(m.Observacao||'—')}</td></tr>`).join(''):`<tr><td colspan="9" class="empty">Nenhuma movimentação encontrada.</td></tr>`;
+    const rows=state.history.rows||[];
+    $('#movesBody').innerHTML=rows.length?rows.map(m=>`<tr><td>${fmtDate(m.DataHora)}</td><td><span class="badge ${m.Tipo==='RETIRADA'?'open':m.Tipo==='DEVOLUCAO'||m.Tipo==='CONSUMO'?'':'off'}">${esc(labelMove(m.Tipo))}</span></td><td><strong>${esc(m.ItemNome||'—')}</strong><div class="meta">${esc(m.CodigoItem||'')}</div></td><td class="number">${fmtNum(m.Quantidade)}</td><td class="number">${fmtNum(m.SaldoAntes)} → ${fmtNum(m.SaldoDepois)}</td><td>${esc(m.Militar||'—')}<div class="meta">${esc([m.Matricula,m.Setor].filter(Boolean).join(' • '))}</div></td><td>${esc(m.ProcessoSEI||'—')}</td><td>${esc(m.AdjuntoRetirada||'—')}</td><td>${esc(m.AdjuntoDevolucao||'—')}</td><td>${esc(m.UsuarioSistema||'—')}</td><td>${esc(m.Observacao||'—')}</td></tr>`).join(''):`<tr><td colspan="11" class="empty">${state.history.loaded?'Nenhuma movimentação encontrada.':'Abra o Histórico para carregar os registros.'}</td></tr>`;
+    $('#historyPageInfo').textContent=`Página ${state.history.page||1} · até 50 registros`;
+    $('#historyPrevBtn').disabled=!state.history.hasPrevious;
+    $('#historyNextBtn').disabled=!state.history.hasMore;
   }
 
   function renderUsers(){
-    if(!state.user||state.user.Perfil!=='ADMIN') return;
+    if(!state.user||!isAdmin()) return;
     $('#usersBody').innerHTML=state.usuarios.length?state.usuarios.map(u=>`<tr><td><strong>${esc(u.Nome)}</strong></td><td>${esc(u.Login)}</td><td><span class="badge open">${esc(u.Perfil)}</span></td><td>${u.Ativo?'<span class="badge">Ativo</span>':'<span class="badge off">Inativo</span>'}</td><td>${u.AtualizadoEm?fmtDate(u.AtualizadoEm):'—'}</td><td><button class="mini-btn" onclick="almox.editUser('${u.ID}')">Editar</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty">Nenhum usuário.</td></tr>`;
+  }
+
+
+  function renderEfetivo(){
+    if(!state.user||!isAdmin()) return;
+    const ta=$('#efetivoTextarea');
+    if(!ta) return;
+    ta.value=(state.efetivo||[]).join('\n');
+    updateEfetivoCount();
+  }
+
+  function linhasEfetivo(){
+    const ta=$('#efetivoTextarea');
+    return (ta?ta.value:'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  }
+
+  function updateEfetivoCount(){
+    const el=$('#efetivoCount'); if(!el) return;
+    const n=linhasEfetivo().length;
+    el.textContent=n + (n===1?' militar':' militares');
+  }
+
+  async function saveEfetivo(){
+    if(!isAdmin()){toast('Somente o ADMIN pode alterar o efetivo.',true);return}
+    setLoading(true);
+    try{
+      const out=await api('saveEfetivo',{nomes:linhasEfetivo()});
+      state.efetivo=out.efetivo||linhasEfetivo();
+      renderEfetivo();
+      toast(out.message||'Efetivo salvo.');
+    }catch(err){toast(err.message,true);}
+    finally{setLoading(false);}
   }
 
   function modalItem(id){
@@ -175,16 +265,36 @@
       <label class="full">Item*<select name="itemId" required><option value="">Selecione...</option>${available.map(i=>`<option value="${i.ID}" ${preselect===i.ID?'selected':''}>${esc(i.Codigo)} — ${esc(i.Nome)} — ${esc(itemTypeLabel(i.TipoItem))} (saldo ${fmtNum(i.QuantidadeAtual)})</option>`).join('')}</select></label>
       <div id="loanTypeInfo" class="section-note full"></div>
       <label>Quantidade*<input name="quantidade" type="number" min="0.01" step="0.01" required></label><label>Data da retirada*<input name="dataRetirada" type="datetime-local" value="${now}" required></label>
-      <label id="responsavelLabel">Retirado por*<input name="retiradoPor" required></label><label>Matrícula / identificação<input name="matricula"></label><label>Setor<input name="setor"></label>
+      <label id="responsavelLabel"><span id="responsavelLabelText">Retirado por*</span><div class="autocomplete-wrap"><input name="retiradoPor" required autocomplete="off"><div id="militarySuggestions" class="autocomplete-list hidden"></div></div><span id="militaryHint" class="hint hidden">Digite qualquer parte do nome para ver sugestões do efetivo. Você também pode informar um nome que não esteja cadastrado.</span></label><label>Matrícula / identificação<input name="matricula"></label><label>Setor<input name="setor"></label>
       <label class="cautela-only">Número do processo de cautela no SEI*<input name="processoSEI" placeholder="Ex.: 00000.000000/0000-00"></label><label class="cautela-only">Devolução prevista<input name="prevista" type="datetime-local"></label>
       <label class="full">Finalidade<input name="finalidade" placeholder="Motivo da retirada"></label><label class="full">Observações<textarea name="observacoes"></textarea></label>
       <div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Registrar retirada</button></div></form>`);
 
     const form=$('#loanForm'), sel=form.querySelector('[name=itemId]');
+    const militaryInput=form.querySelector('[name=retiradoPor]');
+    const suggestions=$('#militarySuggestions');
+    const hideMilitarySuggestions=()=>suggestions.classList.add('hidden');
+    const showMilitarySuggestions=()=>{
+      const item=state.itens.find(x=>x.ID===sel.value);
+      if(!item || normalizeItemType(item.TipoItem)==='CONSUMO'){hideMilitarySuggestions();return}
+      const q=norm(militaryInput.value);
+      if(!q){hideMilitarySuggestions();return}
+      const matches=(state.efetivo||[]).filter(nome=>norm(nome).includes(q)).slice(0,10);
+      if(!matches.length){hideMilitarySuggestions();return}
+      suggestions.innerHTML=matches.map(nome=>`<button type="button" data-name="${attr(nome)}">${esc(nome)}</button>`).join('');
+      suggestions.classList.remove('hidden');
+      suggestions.querySelectorAll('button').forEach(btn=>btn.addEventListener('mousedown',e=>{e.preventDefault();militaryInput.value=btn.dataset.name;hideMilitarySuggestions();militaryInput.focus();}));
+    };
+    militaryInput.addEventListener('input',showMilitarySuggestions);
+    militaryInput.addEventListener('focus',showMilitarySuggestions);
+    militaryInput.addEventListener('keydown',e=>{if(e.key==='Escape')hideMilitarySuggestions();});
+    militaryInput.addEventListener('blur',()=>setTimeout(hideMilitarySuggestions,120));
     const updateType=()=>{
-      const item=state.itens.find(x=>x.ID===sel.value), consumo=normalizeItemType(item?.TipoItem)==='CONSUMO';
+      const item=state.itens.find(x=>x.ID===sel.value), consumo=item&&normalizeItemType(item.TipoItem)==='CONSUMO';
       $('#loanTypeInfo').innerHTML=item?(consumo?'<strong>Material de consumo:</strong> esta saída será definitiva e não ficará aguardando devolução.':'<strong>Material não consumível:</strong> será registrada uma cautela. Militar e número do processo SEI são obrigatórios.'):'Selecione um item para definir o tipo de retirada.';
-      $('#responsavelLabel').childNodes[0].nodeValue=consumo?'Retirado por*':'Militar que fez a cautela*';
+      $('#responsavelLabelText').textContent=!item||consumo?'Retirado por*':'Militar que fez a cautela*';
+      $('#militaryHint').classList.toggle('hidden',!item||consumo);
+      if(!item||consumo) hideMilitarySuggestions();
       $$('.cautela-only',form).forEach(el=>el.classList.toggle('hidden',consumo));
       const proc=form.querySelector('[name=processoSEI]'); proc.required=!consumo; if(consumo) proc.value='';
       const prev=form.querySelector('[name=prevista]'); if(consumo) prev.value='';
@@ -225,7 +335,7 @@
   }
 
   function modalUser(id){
-    if(state.user?.Perfil!=='ADMIN'){toast('Somente o administrador pode gerenciar usuários.',true);return}
+    if(!isAdmin()){toast('Somente o administrador pode gerenciar usuários.',true);return}
     const u=id?state.usuarios.find(x=>x.ID===id):null;
     openModal(u?'Editar usuário':'Novo usuário',`<form id="userForm" class="form-grid"><label>Nome*<input name="nome" required value="${attr(u?.Nome||'')}"></label><label>Login*<input name="login" required value="${attr(u?.Login||'')}"></label><label>Perfil<select name="perfil">${['ADMIN','ADJUNTO'].map(p=>`<option ${p===(u?.Perfil||'ADJUNTO')?'selected':''}>${p}</option>`).join('')}</select></label><label>Status<select name="ativo"><option value="true">Ativo</option><option value="false">Inativo</option></select></label><label class="full">${u?'Novo PIN (deixe vazio para manter)':'PIN*'}<input name="pin" type="password" inputmode="numeric" ${u?'':'required'}><span class="hint">De 4 a 10 dígitos numéricos.</span></label><div class="form-actions"><button type="button" class="btn secondary" onclick="almox.close()">Cancelar</button><button class="btn primary">Salvar</button></div></form>`);
     if(u) $('#userForm [name=ativo]').value=String(u.Ativo!==false);
@@ -250,8 +360,8 @@
   function badgeItem(i){const s=statusItem(i);return s==='INATIVO'?'<span class="badge off">Inativo</span>':s==='ZERADO'?'<span class="badge zero">Zerado</span>':s==='BAIXO'?'<span class="badge low">Baixo</span>':'<span class="badge">Normal</span>'}
   function isOverdue(r){return ['ABERTA','PARCIAL'].includes(r.Status)&&r.PrevistaDevolucao&&dateMs(r.PrevistaDevolucao)<Date.now()}
   function badgeLoan(r){if(r.Status==='CONSUMIDO')return'<span class="badge">Consumo</span>';if(r.Status==='DEVOLVIDA')return'<span class="badge">Devolvida</span>';if(isOverdue(r))return'<span class="badge overdue">Atrasada</span>';if(r.Status==='PARCIAL')return'<span class="badge partial">Parcial</span>';return'<span class="badge open">Cautela aberta</span>'}
-  function labelMove(t){return({RETIRADA:'Cautela',CONSUMO:'Consumo',DEVOLUCAO:'Devolução',ENTRADA:'Entrada',AJUSTE:'Ajuste',ENTRADA_INICIAL:'Entrada inicial'})[t]||t}
-  function moveIcon(t){return({RETIRADA:'↗',CONSUMO:'↗',DEVOLUCAO:'↙',ENTRADA:'＋',AJUSTE:'⚙',ENTRADA_INICIAL:'📦'})[t]||'•'}
+  function labelMove(t){return({RETIRADA:'Cautela',CONSUMO:'Consumo',DEVOLUCAO:'Devolução',ENTRADA:'Entrada',AJUSTE:'Ajuste',CADASTRO_ITEM:'Cadastro de item',EDICAO_ITEM:'Edição de item',REGISTRO_LEGADO:'Registro migrado',ENTRADA_INICIAL:'Entrada inicial'})[t]||t}
+  function moveIcon(t){return({RETIRADA:'↗',CONSUMO:'↗',DEVOLUCAO:'↙',ENTRADA:'＋',AJUSTE:'⚙',CADASTRO_ITEM:'📦',EDICAO_ITEM:'✎',REGISTRO_LEGADO:'☷',ENTRADA_INICIAL:'📦'})[t]||'•'}
 
   function exportItems(){const rows=filteredItems().map(i=>({Codigo:i.Codigo,Nome:i.Nome,Tipo:itemTypeLabel(i.TipoItem),Categoria:i.Categoria,Unidade:i.Unidade,Saldo:i.QuantidadeAtual,EstoqueMinimo:i.EstoqueMinimo,Localizacao:i.Localizacao,Status:statusItem(i),Descricao:i.Descricao}));downloadCSV('itens_almox.csv',rows)}
   function exportLoans(){const rows=filteredLoans().map(r=>({Item:r.ItemNome,Codigo:r.CodigoItem,Tipo:itemTypeLabel(r.TipoItem),Quantidade:r.Quantidade,Devolvida:r.QuantidadeDevolvida,ResponsavelMilitar:r.RetiradoPor,Matricula:r.Matricula,Setor:r.Setor,ProcessoSEI:r.ProcessoSEI,AdjuntoRetirada:r.AdjuntoRetirada,AdjuntoDevolucao:r.AdjuntoDevolucao,DataRetirada:fmtDate(r.DataRetirada),Prevista:fmtDate(r.PrevistaDevolucao),DataDevolucao:fmtDate(r.DataDevolucao),Status:isOverdue(r)?'ATRASADA':r.Status,Finalidade:r.Finalidade,Observacoes:r.Observacoes}));downloadCSV('retiradas_almox.csv',rows)}
