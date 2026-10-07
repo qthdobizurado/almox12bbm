@@ -57,8 +57,8 @@
 
       <section id="view-itens" class="view">
         <div class="page-head"><div><h2>Itens do almoxarifado</h2><p>Estoque, localização, consumo e material de cautela.</p></div><div class="actions"><button class="btn secondary" id="exportItemsBtn">Exportar CSV</button><button class="btn primary can-write" id="newItemBtn">+ Cadastrar item</button></div></div>
-        <div class="panel filters"><input id="itemSearch" placeholder="⌕ Pesquisar..."/><select id="itemCategory"><option value="">Todas as categorias</option></select><select id="itemType"><option value="">Todos os tipos</option><option value="CONSUMO">Consumo</option><option value="NAO_CONSUMO">Não consumo / cautela</option></select><select id="itemStatus"><option value="">Todos os status</option><option value="NORMAL">Normal</option><option value="BAIXO">Estoque baixo</option><option value="ZERADO">Zerado</option><option value="INATIVO">Inativo</option></select><input id="itemLocation" placeholder="Localização" /></div>
-        <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Tipo</th><th>Categoria</th><th>Saldo</th><th>Mínimo</th><th>Localização</th><th>Status</th><th class="can-write">Ações</th></tr></thead><tbody id="itemsBody"></tbody></table></div>
+        <div class="panel filters"><input id="itemSearch" placeholder="⌕ Pesquisar..."/><select id="itemCategory"><option value="">Todas as categorias</option></select><select id="itemType"><option value="">Todos os tipos</option><option value="CONSUMO">Consumo</option><option value="NAO_CONSUMO">Não consumo / cautela</option></select><select id="itemStatus"><option value="">Todos os status</option><option value="NORMAL">Normal</option><option value="BAIXO">Estoque baixo</option><option value="ZERADO">Zerado</option><option value="BAIXADO">Baixado</option></select><input id="itemLocation" placeholder="Localização" /></div>
+        <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Tipo</th><th>Categoria</th><th>Quantidade</th><th>Alerta baixo em</th><th>Localização</th><th>Status</th><th class="can-write">Ações</th></tr></thead><tbody id="itemsBody"></tbody></table></div>
       </section>
 
       <section id="view-retiradas" class="view">
@@ -68,7 +68,7 @@
       </section>
 
       <section id="view-historico" class="view">
-        <div class="page-head"><div><h2>Histórico de movimentações</h2><p>Histórico arquivado em planilha separada e carregado sob demanda, 50 registros por página.</p></div></div>
+        <div class="page-head"><div><h2>Histórico de movimentações</h2><p>Histórico anual na mesma planilha, carregado sob demanda, 50 registros por página.</p></div></div>
         <div class="panel history-filters">
           <label>De<input type="date" id="moveFrom"/></label>
           <label>Até<input type="date" id="moveTo"/></label>
