@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#102a43" />
+  <title>Almox Control</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="loginView" class="login-shell">
+    <div class="login-card">
+      <div class="brand-mark">A</div>
+      <h1>Almox Control</h1>
+      <p>Controle de itens, retiradas, devoluções e localização.</p>
+      <form id="loginForm" class="stack">
+        <label>Login<input id="loginUser" autocomplete="username" required placeholder="admin" /></label>
+        <label>PIN<input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" required placeholder="••••••" /></label>
+        <button class="btn primary wide" type="submit">Entrar</button>
+      </form>
+      <div id="loginHelp" class="muted small"></div>
+    </div>
+  </div>
+
+  <div id="appView" class="app-shell hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark smallmark">A</div><div><strong id="brandName">Almox Control</strong><span id="brandUnit">Almoxarifado</span></div></div>
+      <nav id="nav">
+        <button class="nav-item active" data-view="dashboard">▦ <span>Dashboard</span></button>
+        <button class="nav-item" data-view="itens">📦 <span>Itens</span></button>
+        <button class="nav-item" data-view="retiradas">↗ <span>Retiradas</span></button>
+        <button class="nav-item" data-view="historico">☷ <span>Histórico</span></button>
+        <button class="nav-item" data-view="adjuntos">✓ <span>Adjuntos</span></button>
+        <button class="nav-item admin-only" data-view="usuarios">👥 <span>Usuários</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button id="changePinBtn" class="nav-item">🔑 <span>Alterar PIN</span></button>
+        <button id="logoutBtn" class="nav-item danger-text">↪ <span>Sair</span></button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="menuBtn" class="icon-btn mobile-only" aria-label="Menu">☰</button>
+        <div class="global-search">
+          <span>⌕</span><input id="globalSearch" placeholder="Pesquisar item, código ou localização..." />
+        </div>
+        <div class="user-chip"><div class="avatar" id="userInitial">U</div><div><strong id="userName">Usuário</strong><span id="userRole">PERFIL</span></div></div>
+      </header>
+
+      <section id="view-dashboard" class="view active-view">
+        <div class="page-head"><div><h2>Dashboard</h2><p>Visão geral do almoxarifado.</p></div><button class="btn primary can-write" id="quickLoanBtn">+ Registrar retirada</button></div>
+        <div class="kpi-grid" id="kpiGrid"></div>
+        <div class="grid-2">
+          <div class="panel"><div class="panel-head"><h3>⚠ Alertas de estoque</h3><button class="link-btn" data-goto="itens">Ver itens</button></div><div id="stockAlerts"></div></div>
+          <div class="panel"><div class="panel-head"><h3>⏰ Devoluções pendentes</h3><button class="link-btn" data-goto="retiradas">Ver retiradas</button></div><div id="loanAlerts"></div></div>
+        </div>
+        <div class="panel"><div class="panel-head"><h3>Atividade recente</h3></div><div id="recentActivity"></div></div>
+      </section>
+
+      <section id="view-itens" class="view">
+        <div class="page-head"><div><h2>Itens do almoxarifado</h2><p>Estoque, localização e disponibilidade.</p></div><div class="actions"><button class="btn secondary" id="exportItemsBtn">Exportar CSV</button><button class="btn primary can-write" id="newItemBtn">+ Novo item</button></div></div>
+        <div class="panel filters"><input id="itemSearch" placeholder="⌕ Pesquisar..."/><select id="itemCategory"><option value="">Todas as categorias</option></select><select id="itemStatus"><option value="">Todos os status</option><option value="NORMAL">Normal</option><option value="BAIXO">Estoque baixo</option><option value="ZERADO">Zerado</option><option value="INATIVO">Inativo</option></select><input id="itemLocation" placeholder="Localização" /></div>
+        <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Categoria</th><th>Saldo</th><th>Mínimo</th><th>Localização</th><th>Status</th><th class="can-write">Ações</th></tr></thead><tbody id="itemsBody"></tbody></table></div>
+      </section>
+
+      <section id="view-retiradas" class="view">
+        <div class="page-head"><div><h2>Retiradas e devoluções</h2><p>Controle de quem retirou, autorização e prazos.</p></div><div class="actions"><button class="btn secondary" id="exportLoansBtn">Exportar CSV</button><button class="btn primary can-write" id="newLoanBtn">+ Registrar retirada</button></div></div>
+        <div class="panel filters"><input id="loanSearch" placeholder="⌕ Pessoa, item, adjunto..."/><select id="loanStatus"><option value="">Todos os status</option><option value="ABERTA">Aberta</option><option value="PARCIAL">Parcial</option><option value="ATRASADA">Atrasada</option><option value="DEVOLVIDA">Devolvida</option></select><input type="date" id="loanFrom"/><input type="date" id="loanTo"/></div>
+        <div class="panel table-wrap"><table><thead><tr><th>Item</th><th>Retirado por</th><th>Adjunto</th><th>Retirada</th><th>Prevista</th><th>Qtd.</th><th>Status</th><th class="can-write">Ações</th></tr></thead><tbody id="loansBody"></tbody></table></div>
+      </section>
+
+      <section id="view-historico" class="view">
+        <div class="page-head"><div><h2>Histórico de movimentações</h2><p>Trilha de auditoria das alterações de estoque.</p></div></div>
+        <div class="panel filters"><input id="moveSearch" placeholder="⌕ Item, responsável ou observação..."/><select id="moveType"><option value="">Todos os tipos</option><option value="RETIRADA">Retirada</option><option value="DEVOLUCAO">Devolução</option><option value="ENTRADA">Entrada</option><option value="AJUSTE">Ajuste</option><option value="ENTRADA_INICIAL">Entrada inicial</option></select></div>
+        <div class="panel table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Quantidade</th><th>Saldo</th><th>Responsável</th><th>Usuário</th><th>Observação</th></tr></thead><tbody id="movesBody"></tbody></table></div>
+      </section>
+
+      <section id="view-adjuntos" class="view">
+        <div class="page-head"><div><h2>Adjuntos autorizadores</h2><p>Nomes disponíveis para autorizar retiradas.</p></div><button class="btn primary can-write" id="newAdjuntoBtn">+ Novo adjunto</button></div>
+        <div class="panel table-wrap"><table><thead><tr><th>Nome</th><th>Cargo/Função</th><th>Status</th><th>Observações</th><th class="can-write">Ações</th></tr></thead><tbody id="adjuntosBody"></tbody></table></div>
+      </section>
+
+      <section id="view-usuarios" class="view">
+        <div class="page-head"><div><h2>Usuários do sistema</h2><p>Permissões de acesso ao site.</p></div><button class="btn primary admin-only" id="newUserBtn">+ Novo usuário</button></div>
+        <div class="panel info-box"><strong>Perfis:</strong> ADMIN gerencia tudo; ALMOX movimenta estoque; CONSULTA apenas visualiza.</div>
+        <div class="panel table-wrap"><table><thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Status</th><th>Atualizado</th><th>Ações</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal hidden"><div class="modal-card"><div class="modal-head"><h3 id="modalTitle">Título</h3><button id="modalClose" class="icon-btn">×</button></div><div id="modalContent"></div></div></div>
+  <div id="toast" class="toast hidden"></div>
+  <div id="loading" class="loading hidden"><div class="spinner"></div><span>Processando...</span></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
